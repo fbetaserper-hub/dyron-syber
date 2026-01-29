@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DYRON OS v1 - Hyper Intel</title>
+    <style>
+        :root {
+            --neon: #00ff41; --bg: #050505; --panel: #111; --red: #ff003c;
+        }
+        body {
+            background: var(--bg); color: var(--neon); font-family: 'Courier New', monospace;
+            margin: 0; height: 100vh; overflow: hidden; display: flex;
+        }
+        /* Login Overlay */
+        #login-overlay {
+            position: fixed; inset: 0; background: var(--bg); z-index: 1000;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+        }
+        .login-box { border: 2px solid var(--neon); padding: 40px; background: var(--panel); text-align: center; }
+        input { background: #000; border: 1px solid var(--neon); color: var(--neon); padding: 10px; margin: 10px; outline: none; }
+        
+        /* Layout */
+        #main-ui { display: none; width: 100%; height: 100%; display: flex; }
+        nav { width: 220px; border-right: 1px solid #333; background: var(--panel); display: flex; flex-direction: column; }
+        .menu-item { padding: 15px; cursor: pointer; border-bottom: 1px solid #222; font-size: 0.8rem; }
+        .menu-item:hover, .active { background: rgba(0,255,65,0.1); border-left: 4px solid var(--neon); }
+        
+        main { flex-grow: 1; padding: 25px; display: flex; flex-direction: column; gap: 20px; overflow-y: auto; }
+        .content-section { display: none; background: #1a1a1a; padding: 20px; border: 1px solid #333; border-radius: 5px; }
+        .visible { display: block; }
+
+        /* Component Styles */
+        .btn { background: var(--neon); color: #000; border: none; padding: 10px 20px; cursor: pointer; font-weight: bold; }
+        .btn-red { background: var(--red); color: #fff; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; }
+        .card { background: #000; padding: 15px; border: 1px solid var(--neon); text-align: center; }
+        .terminal { background: #000; padding: 15px; height: 150px; overflow-y: auto; font-size: 0.75rem; border: 1px solid #333; }
+    </style>
+</head>
+<body>
+
+<div id="login-overlay">
+    <div class="login-box">
+        <h2>DYRON OS ACCESS</h2>
+        <input type="password" id="key-input" placeholder="ENTER ACCESS KEY">
+        <br>
+        <button class="btn" onclick="verify()">VERIFY</button>
+        <button class="btn" style="background:transparent; color:var(--neon); border:1px solid var(--neon)" onclick="getKey()">GET KEY</button>
+        <p id="key-hint" style="font-size: 0.7rem; margin-top: 10px;"></p>
+    </div>
+</div>
+
+<div id="main-ui" style="display: none;">
+    <nav>
+        <div style="padding:20px; font-weight:bold; border-bottom: 2px solid var(--neon)">DYRON v1.0</div>
+        <div class="menu-item active" onclick="show('dash')">📊 DASHBOARD</div>
+        <div class="menu-item" onclick="show('hardware')">⚡ HARDWARE OVERRIDE</div>
+        <div class="menu-item" onclick="show('sms')">💬 SMS MONITOR</div>
+        <div class="menu-item" onclick="show('db')">📁 DATABASE</div>
+        <div class="menu-item" onclick="location.reload()" style="color:var(--red)">🔒 LOCK</div>
+    </nav>
+
+    <main>
+        <section id="dash" class="content-section visible">
+            <h3>CORE SYSTEM STATUS</h3>
+            <div class="grid">
+                <div class="card">NODES<br><span id="nodes">142</span></div>
+                <div class="card">CPU<br><span id="cpu">0%</span></div>
+                <div class="card">SIGNAL<br>STRONG</div>
+            </div>
+            <h4>ACTIVITY LOG</h4>
+            <div class="terminal" id="term-dash">>> System online...</div>
+        </section>
+
+        <section id="hardware" class="content-section">
+            <h3>HARDWARE OVERRIDE</h3>
+            <div style="display:flex; gap:10px;">
+                <button class="btn" id="flash-btn" onclick="toggleFlash()">TOGGLE FLASH</button>
+                <button class="btn" onclick="vibrateDevice()">VIBRATE TEST</button>
+            </div>
+            <p>Status: <span id="h-status" style="color:white">IDLE</span></p>
+        </section>
+
+        <section id="sms" class="content-section">
+            <h3>VIRTUAL SMS INTERCEPTOR</h3>
+            <div class="terminal" id="sms-log">
+                [SYSTEM] Waiting for incoming packets...
+            </div>
+        </section>
+
+        <section id="db" class="content-section">
+            <h3>SIMULATED DATABASE</h3>
+            <table style="width:100%; text-align:left; font-size:0.8rem;">
+                <tr style="border-bottom:1px solid var(--neon)">
+                    <th>TARGET_ID</th><th>STATUS</th><th>DATA_SIZE</th>
+                </tr>
+                <tr><td>82-X1</td><td>ENCRYPTED</td><td>1.2 GB</td></tr>
+                <tr><td>44-K9</td><td>DECRYPTED</td><td>450 MB</td></tr>
+            </table>
+        </section>
+    </main>
+</div>
+
+<script>
+    let stream = null;
+    let masterKey = "";
+
+    // -- AUTH LOGIC --
+    function getKey() {
+        masterKey = "DYRON-" + Math.floor(1000 + Math.random() * 9000);
+        document.getElementById('key-hint').innerText = "YOUR KEY: " + masterKey;
+    }
+
+    function verify() {
+        const input = document.getElementById('key-input').value;
+        if (input === masterKey && masterKey !== "") {
+            document.getElementById('login-overlay').style.display = 'none';
+            document.getElementById('main-ui').style.display = 'flex';
+            startSim();
+        } else { alert("ACCESS DENIED"); }
+    }
+
+    // -- UI LOGIC --
+    function show(id) {
+        document.querySelectorAll('.content-section').forEach(s => s.classList.remove('visible'));
+        document.querySelectorAll('.menu-item').forEach(m => m.classList.remove('active'));
+        document.getElementById(id).classList.add('visible');
+        event.currentTarget.classList.add('active');
+    }
+
+    // -- HARDWARE LOGIC --
+    async function toggleFlash() {
+        const btn = document.getElementById('flash-btn');
+        try {
+            if (!stream) {
+                stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                const track = stream.getVideoTracks()[0];
+                await track.applyConstraints({ advanced: [{ torch: true }] });
+                btn.style.background = "white"; btn.innerText = "FLASH ON";
+            } else {
+                stream.getTracks().forEach(t => t.stop());
+                stream = null;
+                btn.style.background = "var(--neon)"; btn.innerText = "TOGGLE FLASH";
+            }
+        } catch (e) { alert("Hardware Error: " + e.message); }
+    }
+
+    function vibrateDevice() {
+        if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+        else alert("Vibration not supported on this device.");
+    }
+
+    // -- SIMULATION LOGIC --
+    function startSim() {
+        setInterval(() => {
+            document.getElementById('cpu').innerText = Math.floor(Math.random() * 40 + 5) + "%";
+            if (Math.random() > 0.7) {
+                const smsLog = document.getElementById('sms-log');
+                const msgs = ["Incoming signal...", "Packet 0x24 received", "Bypassing protocol..."];
+                smsLog.innerHTML += `<br>[${new Date().toLocaleTimeString()}] ${msgs[Math.floor(Math.random()*msgs.length)]}`;
+                smsLog.scrollTop = smsLog.scrollHeight;
+            }
+        }, 2000);
+    }
+</script>
+</body>
+</html>
